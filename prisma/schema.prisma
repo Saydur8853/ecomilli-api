@@ -1,0 +1,176 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Status {
+  active
+  inactive
+}
+
+enum NewsSource {
+  reuters
+  local
+}
+
+enum NewsStatus {
+  draft
+  published
+  archieved
+}
+
+model User {
+  id              Int           @id @default(autoincrement())
+  name            String        @db.VarChar(100)
+  email           String        @unique @db.VarChar(80)
+  phone           String?       @unique @db.VarChar(12)
+  password        String
+  avatar          String?
+  role            Role          @relation(fields: [roleId], references: [id])
+  roleId          Int
+  otp             Int?
+  otpVerified     Boolean       @default(false)
+  status          Status        @default(active)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  infobite        Infobite[]
+  category        Category[]
+  addedNews       News[]        @relation("AddedBy")
+  updatedNews     News[]        @relation("UpdatedBy")
+  updatedComments Comment[]     @relation("commentUpdatedBy")
+  CronSetting     CronSetting[]
+
+  @@map("users")
+}
+
+model Role {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(100)
+  users     User[]
+  status    Status   @default(active)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("roles")
+}
+
+model Infobite {
+  id          Int      @id @default(autoincrement())
+  title       String   @unique @db.VarChar(150)
+  picture     String?
+  updatedBy   User     @relation(fields: [updatedById], references: [id])
+  updatedById Int
+  status      Status   @default(active)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("infobites")
+}
+
+model CronSetting {
+  id            Int      @id @default(autoincrement())
+  title         String   @unique @db.VarChar(150)
+  cronTitle     String   @unique @db.VarChar(150)
+  job           String   @unique @db.VarChar(200)
+  schedule      Json
+  timeZone      String?  @db.VarChar(100)
+  status        Status   @default(active)
+  cronAddedBy   User     @relation(fields: [cronAddedById], references: [id])
+  cronAddedById Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("cron_settings")
+}
+
+model Category {
+  id           Int      @id @default(autoincrement())
+  name         String   @unique @db.VarChar(100)
+  icon         String?
+  special      Boolean  @default(false)
+  parentId     Int?
+  status       Status   @default(active)
+  catAddedBy   User     @relation(fields: [catAddedById], references: [id])
+  catAddedById Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  News         News[]
+
+  @@map("categories")
+}
+
+model News {
+  id               Int        @id @default(autoincrement())
+  title            String     @db.VarChar(250)
+  slug             String     @unique @db.VarChar(250)
+  category         Category   @relation(fields: [catId], references: [id])
+  catId            Int
+  authors          String?
+  featuredImage    String?
+  shortDesc        String?
+  description      String?
+  imgSourceUrl     String?
+  originalNewsUrl  String?
+  newsSource       NewsSource @default(reuters)
+  publishTimestamp DateTime   @default(now())
+  viewCount        Int        @default(0)
+  shareCount       Int        @default(0)
+
+  addedBy     User? @relation("AddedBy", fields: [addedById], references: [id])
+  updatedBy   User? @relation("UpdatedBy", fields: [updatedById], references: [id])
+  addedById   Int?
+  updatedById Int?
+
+  tags     Tag[]
+  images   NewsImage[]
+  comments Comment[]
+
+  status    NewsStatus @default(draft)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model NewsImage {
+  id     Int     @id @default(autoincrement())
+  image  String?
+  news   News    @relation(fields: [newsId], references: [id])
+  newsId Int
+
+  @@map("news_images")
+}
+
+model Tag {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(50)
+  news      News     @relation(fields: [newsId], references: [id])
+  newsId    Int
+  status    Status   @default(active)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tags")
+}
+
+model Comment {
+  id               Int      @id @default(autoincrement())
+  comment          String
+  commentById      Int?
+  parentId         Int?
+  commentTimestamp DateTime @default(now())
+  updatedBy        User?    @relation("commentUpdatedBy", fields: [updatedById], references: [id])
+  updatedById      Int?
+  news             News     @relation(fields: [newsId], references: [id])
+  newsId           Int
+  status           Status   @default(active)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("comments")
+}
